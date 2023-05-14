@@ -1,0 +1,46 @@
+import java.util.concurrent.*;     //add a penny to our account class
+
+public class AccountWithoutSyncUser {
+	private static Account userAccount = new Account();
+	public static void main(String[] args) {
+		ExecutorService executor = Exwcutors.newCachedThreadPool();  //Use canched threads in case of future use
+		for(int i = 0; i < 100; i++) {
+			executor.execute(new AddAPenny());   //similar to .start
+		}
+		executor.shutdown(); //dont start any new operations and finish the current running operation/threads
+		while(!executor.isShutdown()) {
+			
+		}
+		System.out.println("What is balance? " + userAccount.getBalance());
+	}
+	private static class AddAPenny implements Runnable{
+		public void run() {
+				userAccount.deposit(1);
+		}
+	}
+	
+	private static class Account{
+		private int balance = 0;
+		
+		public void deposit(int amount) {       //adding a rupee 
+			int newBalance = balance + amount;
+			   try                            // adding a rupee suppose if 4 thread then it add 4 rupee         
+			   {
+				   Thread.sleep(1);
+			   }
+			   catch(InterruptedException ex)
+			   {
+				   
+			   }
+			balance = newBalance;
+		}
+		
+		public int getBalance() {
+			return balance;
+		}
+		
+		
+	}
+}
+
+o/p- What is balance? 2    (instead of 100 as loop runs 100 times)

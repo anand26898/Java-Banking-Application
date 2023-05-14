@@ -1,0 +1,86 @@
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;
+
+public class AccountWithConditionsUser {
+	private static Account account = new Account();
+	public static void main(String[] args) {
+		System.out.println("Thread 1\t\tThread 2\t\tBalance");
+		ExecutorService executor = Executors.newFixedThreadPool(2); //Ececutor service with fixed thread pool since we know we are going to run 2 threads previously we may have 100 in cached pool
+		//calling execute methods
+		executor.execute(new DepositTask());
+		executor.execute(new WithdrawTask());   //since new version of java so will not wait till line 9 to finish and will move to line 10.
+		//shutting down our execute
+		executor.shutdown();// thread will run but when thread finish program will end by calling shutdown
+		while(!executor.isShutdown()) {   //keep this program going as long as not shut down
+		}
+	}
+	public static class DepositTask implements Runnable{
+		public void run() {
+			try {
+				while(true) {  //since depositing has to keep going forever
+					account.deposit((int) (Math.random() *10)+ 1);  //we are depositing any random value between 1 to 10.
+				//now if we not put this thread to sleep then other threads wont get execute
+				   Thread.sleep(1000);   //waiting for 1 sec so that two threads wont constantly weep on same account
+				}
+			}
+			catch(InterruptedException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+	
+	public static class WithdrawTask implements Runnable{
+		public void run() {
+			while(true) {
+				account.withdraw((int)(Math.random() * 10) + 1);
+			}
+		}
+	}
+	
+	private static class Account{
+		//creating and acquring a lock
+		private static Lock lock = new ReentrantLock(true); //Fairness policy
+		//condition of pass this lock only when there is a possibility of withdrawing ie amount is there in account
+		private static Condition newDeposit = lock.newCondition(); //way of creating conditions is by calling them on lock objects
+		private int balance = 0;
+		public int getBalance() {
+			return balance;
+		}
+		
+		public void withdraw(int amount) {
+			//here we have to manipulate the locks(if there is amount in account)
+		   lock.lock(); // acquring lock
+		   try {
+			   while(balance < amount) {   //amount that we want to remove
+				   System.out.println("\t\t\tWait for deposit");
+				   // we have notified the user but how we have to actually manipulate the condition
+			       newDeposit.await(); //signalling new deposit condition that I need more money in this account and keep running until get enough money
+			   }
+			   balance -= amount; //if whike block is false
+			   System.out.println("\t\t\tWithdraw"+ amount+ "\t\t" + getBalance());
+		   }
+		   //newDeposit.await can throw an exception if thread is already interrupted
+		   caatch(InterruptedException ex){
+			   ex.printStackTrace(); //if occurs then print StackTrace
+		   }
+		//now to release the lock
+		   finally {
+			   lock.unlock();   //now other program can use this lock and this bit of code
+		   }
+		}
+		
+		public void deposit(int amount) {
+			lock.lock();
+			try {
+				balance += amount;
+				System.out.println("Deposit "+ amount + "\t\t\t\t\t" + getBalance());
+			 //finally signalling that deposit is done and you can call withdraw again
+			    newDeposit.signalAll();  //yes this thread is done and other threads can access the information
+			}
+			finally {
+				lock.unlock();
+			}
+		}
+		
+	}
+}

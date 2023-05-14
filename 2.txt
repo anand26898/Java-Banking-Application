@@ -1,0 +1,47 @@
+//here we are creating lock, and passing locks with various threads on deposit method and synchronizing block of code
+
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;  //allows manipulate various locks at same time and also allows to communicate between various blocks
+
+public class AccountWithSyncUser {
+	private static Account userAccount = new Account();
+	public static void main(String[] args) {
+		ExecutorService executor = Executors.newCachedThreadPool();
+		
+		for(int i = 0; i < 100; i++) {
+			executor.execute(new AddAPenny());
+		}
+		executor.shutdown();
+		while(!executor.isShutdown()) {
+		}
+		System.out.println("What is balance? " + userAccount.getBalance());
+	}
+	private static class AddAPenny implements Runnable{
+		public synchronized void run() {			
+				userAccount.deposit(1);			
+		}
+	}
+	
+	private static class Account{
+	 private static Lock lock = new ReentrantLock(true); //true here means thread with highest priority and false means random
+		private int balance = 0;
+		public int getBalance() {
+			return balance;
+		}
+		
+		public void deposit(int amount) {
+			lock.lock();
+			try {
+				int newBalance = balance+ amount;
+				balance = newBalance;
+			}
+			finally {          //to release the lock whenever thread finishes and make sure thar other thread get access to our program
+				lock.unlock();
+			}
+		}
+		
+	}
+}
+
+
+o/p- What is balance? 56(which is much much closer to 100 therefore locks are not perfect, sync arenot the perfect way for comm between blocks since they are accessing but not properly updating the information)
